@@ -14,7 +14,7 @@ require (
 	github.com/sagernet/sing v0.8.12
 	github.com/sagernet/sing-box v1.13.18
 	github.com/sagernet/sing-quic v0.6.4-0.20260803041914-d83826c306d7
-	github.com/sagernet/sing-vmess v0.2.8-0.20250909125414-3aed155119a1
+	github.com/sagernet/sing-vmess v0.2.8
 	github.com/shirou/gopsutil/v4 v4.26.7
 	golang.org/x/crypto v0.54.0
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20241231184526-a9ab2273dd10
