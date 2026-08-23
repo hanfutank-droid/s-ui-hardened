@@ -32,7 +32,7 @@ jobs:
           git -C frontend apply ../patches/frontend-http-only-session.patch
 
       - name: Set up Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
