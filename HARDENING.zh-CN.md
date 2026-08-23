@@ -16,6 +16,7 @@
 
 - 面板默认只监听 `127.0.0.1:2095`。
 - 订阅服务默认只监听 `127.0.0.1:2096`。
+- 会话 Cookie 使用 `HttpOnly`、`SameSite=Lax`，前端不再读取会话 Cookie。
 - 会话 Cookie 使用 `HttpOnly` 和 `SameSite=Lax`。
 - 通过 TLS 或可信反向代理 HTTPS 访问时，Cookie 自动使用 `Secure`。
 - 全新安装会在服务启动前替换上游默认的 `admin/admin`。
