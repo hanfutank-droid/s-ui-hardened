@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Check out fixed source and frontend
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@v7.0.1
         with:
           submodules: recursive
           fetch-depth: 0
