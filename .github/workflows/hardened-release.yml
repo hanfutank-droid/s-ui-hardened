@@ -1,0 +1,125 @@
+name: Hardened Linux amd64 build
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*-hardened.*"
+
+permissions:
+  contents: write
+
+env:
+  NODE_VERSION: "26"
+  PACKAGE_NAME: s-ui-v1.5.5-hardened-linux-amd64
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out fixed source and frontend
+        uses: actions/checkout@v6.0.2
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build frontend from lock file
+        run: |
+          set -euo pipefail
+          cd frontend
+          npm ci --ignore-scripts
+          npm run build
+          cd ..
+          mkdir -p web/html
+          cp -R frontend/dist/. web/html/
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Install musl toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends musl-tools file
+
+      - name: Vet and compile package tests
+        run: |
+          go vet ./api ./service ./database ./cmd/...
+          go test ./api ./service ./database ./cmd/...
+
+      - name: Build static Linux amd64 binary
+        env:
+          GOOS: linux
+          GOARCH: amd64
+          CGO_ENABLED: "1"
+          CC: musl-gcc
+        run: |
+          set -euo pipefail
+          BUILD_TAGS="with_quic,with_grpc,with_utls,with_acme,with_gvisor,badlinkname,tfogo_checklinkname0,with_tailscale"
+          go build \
+            -trimpath \
+            -buildvcs=true \
+            -ldflags="-w -s -checklinkname=0 -linkmode external -extldflags '-static -s'" \
+            -tags "${BUILD_TAGS}" \
+            -o sui .
+          file sui
+          file sui | grep -q "ELF 64-bit LSB executable, x86-64"
+          file sui | grep -q "statically linked"
+          go version -m sui
+
+      - name: Package and checksum
+        run: |
+          set -euo pipefail
+          mkdir -p "release/${PACKAGE_NAME}/s-ui"
+          install -m 0755 sui "release/${PACKAGE_NAME}/s-ui/sui"
+          install -m 0644 packaging/s-ui.service "release/${PACKAGE_NAME}/s-ui/s-ui.service"
+          install -m 0755 packaging/install.sh "release/${PACKAGE_NAME}/install.sh"
+          install -m 0644 HARDENING.zh-CN.md "release/${PACKAGE_NAME}/HARDENING.zh-CN.md"
+          install -m 0644 LICENSE "release/${PACKAGE_NAME}/LICENSE"
+          tar \
+            --sort=name \
+            --mtime='UTC 2026-08-09' \
+            --owner=0 \
+            --group=0 \
+            --numeric-owner \
+            -czf "release/${PACKAGE_NAME}.tar.gz" \
+            -C release "${PACKAGE_NAME}"
+          cd release
+          sha256sum "${PACKAGE_NAME}.tar.gz" > SHA256SUMS
+          sha256sum -c SHA256SUMS
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ env.PACKAGE_NAME }}
+          path: |
+            release/${{ env.PACKAGE_NAME }}.tar.gz
+            release/SHA256SUMS
+          retention-days: 30
+
+      - name: Publish tagged release
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if ! gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1; then
+            gh release create "${GITHUB_REF_NAME}" \
+              --title "s-ui ${GITHUB_REF_NAME}" \
+              --notes-file HARDENING.zh-CN.md
+          fi
+          gh release upload "${GITHUB_REF_NAME}" \
+            "release/${PACKAGE_NAME}.tar.gz" \
+            release/SHA256SUMS \
+            --clobber

@@ -1,0 +1,17 @@
+[Unit]
+Description=s-ui Service (hardened build)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/usr/local/s-ui/
+ExecStart=/usr/local/s-ui/sui
+Restart=on-failure
+RestartSec=10s
+UMask=0077
+LimitNOFILE=1048576
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target
