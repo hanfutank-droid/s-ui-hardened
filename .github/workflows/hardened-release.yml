@@ -13,7 +13,7 @@ permissions:
 
 env:
   NODE_VERSION: "26"
-  PACKAGE_NAME: s-ui-v1.5.5-hardened-linux-amd64
+  PACKAGE_NAME: s-ui-v1.5.5-hardened.2-linux-amd64
 
 jobs:
   build:
@@ -24,6 +24,12 @@ jobs:
         with:
           submodules: recursive
           fetch-depth: 0
+
+      - name: Apply HttpOnly-compatible frontend patch
+        run: |
+          set -euo pipefail
+          git -C frontend apply --check ../patches/frontend-http-only-session.patch
+          git -C frontend apply ../patches/frontend-http-only-session.patch
 
       - name: Set up Node.js
         uses: actions/setup-node@v6
@@ -116,7 +122,7 @@ jobs:
           set -euo pipefail
           RELEASE_TAG="${GITHUB_REF_NAME}"
           if [[ "${GITHUB_REF}" == "refs/heads/main" ]]; then
-            RELEASE_TAG="v1.5.5-hardened.1"
+            RELEASE_TAG="v1.5.5-hardened.2"
           fi
 
           if gh release view "${RELEASE_TAG}" >/dev/null 2>&1; then
